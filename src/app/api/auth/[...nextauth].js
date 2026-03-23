@@ -1,0 +1,48 @@
+import NextAuth from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import { Pool } from "pg";
+
+const pool = new Pool({
+  connectionString: process.env.DB_CONN,
+});
+
+async function findOrCreateUser(email, name) {
+  const client = await pool.connect();
+  try {
+    const res = await client.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+    if (res.rows.length > 0) {
+      return res.rows[0];
+    } else {
+      const insert = await client.query(
+        "INSERT INTO users (email, name) VALUES ($1, $2) RETURNING *",
+        [email, name],
+      );
+      return insert.rows[0];
+    }
+  } finally {
+    client.release();
+  }
+}
+
+const handler = NextAuth({
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+  ],
+  callbacks: {
+    async signIn({ user }) {
+      await findOrCreateUser(user.email, user.name);
+      return true;
+    },
+    async session({ session }) {
+      // Optionally, you can fetch more user info here
+      return session;
+    },
+  },
+});
+
+export { handler as GET, handler as POST };

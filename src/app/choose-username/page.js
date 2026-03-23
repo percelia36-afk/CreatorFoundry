@@ -1,0 +1,1 @@
+// This page is intentionally left blank as the choose-username logic is removed.
