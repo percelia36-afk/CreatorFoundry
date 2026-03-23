@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { Pool } from "pg";
+import { v4 as uuidv4 } from "uuid";
 
 const pool = new Pool({
   connectionString: process.env.DB_CONN,
@@ -15,9 +16,10 @@ async function findOrCreateUser(email, name) {
     if (res.rows.length > 0) {
       return res.rows[0];
     } else {
+      const auth_user_id = uuidv4();
       const insert = await client.query(
-        "INSERT INTO users (email, name) VALUES ($1, $2) RETURNING *",
-        [email, name],
+        "INSERT INTO users (auth_user_id, email, username) VALUES ($1, $2, $3) RETURNING *",
+        [auth_user_id, email, name],
       );
       return insert.rows[0];
     }
